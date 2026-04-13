@@ -10,19 +10,26 @@ from google.oauth2.service_account import Credentials
 # 기본 설정
 # =========================================================
 st.set_page_config(page_title="Matice Assignment", layout="centered")
-st.title("Matice Assignment")
 
 st.markdown("""
 <style>
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+html, body, [class*="css"] {
+    font-family: 'Pretendard', sans-serif;
+}
+
 div[data-testid="stForm"] {
     border: none;
     padding: 0;
 }
+
 div[data-testid="stFormSubmitButton"] button {
     border-radius: 14px !important;
     height: 48px !important;
     font-weight: 700 !important;
 }
+
 .test-card {
     padding: 14px 16px;
     border: 1px solid #e5e7eb;
@@ -31,6 +38,7 @@ div[data-testid="stFormSubmitButton"] button {
     background: #ffffff;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
+
 .q-card {
     padding: 14px 16px;
     border: 1px solid #e5e7eb;
@@ -38,6 +46,7 @@ div[data-testid="stFormSubmitButton"] button {
     margin-bottom: 4px;
     background: #ffffff;
 }
+
 .small-muted {
     color: #6b7280;
     font-size: 14px;
@@ -45,6 +54,7 @@ div[data-testid="stFormSubmitButton"] button {
 </style>
 """, unsafe_allow_html=True)
 
+st.title("Matice Assignment")
 
 # =========================================================
 # 상수
