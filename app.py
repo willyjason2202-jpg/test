@@ -50,6 +50,31 @@ for t in tests:
 
 if available_tests:
     test_names = [t["시험명"] for t in available_tests]
-    st.selectbox("응시할 시험 선택", test_names)
+    selected_test = st.selectbox("응시할 시험 선택", test_names)
+    # -------------------------------
+# 답안 입력
+# -------------------------------
+st.subheader("답안 입력")
+
+answers = st.text_input("답안을 입력하세요 (예: 1,2,3,4)")
+
+# -------------------------------
+# 제출 버튼
+# -------------------------------
+if st.button("제출하기"):
+    if not answers:
+        st.warning("답안을 입력하세요.")
+    else:
+        result_ws = spreadsheet.worksheet("결과")
+
+        result_ws.append_row([
+            student["학생ID"],
+            student["학생이름"],
+            student["학교"],
+            selected_test,
+            answers
+        ])
+
+        st.success("제출 완료!")
 else:
     st.warning("응시 가능한 시험이 없습니다.")
