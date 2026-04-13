@@ -15,7 +15,7 @@ creds = Credentials.from_service_account_info(
 )
 client = gspread.authorize(creds)
 
-spreadsheet = client.open_by_url("채점프로그램_구글시트_초안")
+spreadsheet = client.open("채점프로그램_구글시트_초안")
 
 students_ws = spreadsheet.worksheet("학생정보")
 tests_ws = spreadsheet.worksheet("시험정보")
