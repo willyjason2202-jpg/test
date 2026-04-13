@@ -78,18 +78,12 @@ def normalize_student_id(value) -> str:
 
 
 def normalize_question_number(value) -> str:
-    """
-    '3', ' 3 ', '3번', '문항3', '[3]' -> '3'
-    """
     text = normalize_text(value)
     nums = re.findall(r"\d+", text)
     return nums[0] if nums else ""
 
 
 def parse_wrong_list(value) -> List[str]:
-    """
-    '1,2,3', '1번, 2번', '-', '' -> ['1','2','3']
-    """
     text = normalize_text(value)
     if text in ("", "-"):
         return []
@@ -120,9 +114,6 @@ def compare_answer(student_ans: str, correct_ans: str) -> bool:
 
 
 def read_records_safe(ws) -> List[Dict]:
-    """
-    결과 시트처럼 데이터가 없을 수 있는 시트를 안전하게 읽기 위한 함수.
-    """
     values = ws.get_all_values()
 
     if not values:
@@ -140,9 +131,6 @@ def read_records_safe(ws) -> List[Dict]:
 
 
 def ensure_result_headers(ws) -> None:
-    """
-    결과 시트가 비어 있거나 헤더가 어긋나 있으면 헤더를 맞춤.
-    """
     values = ws.get_all_values()
 
     if not values:
@@ -158,15 +146,6 @@ def ensure_result_headers(ws) -> None:
 
 
 def build_question_map(test_row: Dict) -> Tuple[Dict[str, Dict[str, str]], List[str]]:
-    """
-    시험정보 행에서 문항 정보를 추출.
-    반환 예시:
-    question_map = {
-        '1': {'col': '문항1', 'answer': '3'},
-        '2': {'col': '문항2', 'answer': '1,4'},
-    }
-    ordered_nums = ['1', '2', ...]
-    """
     question_map: Dict[str, Dict[str, str]] = {}
     ordered_nums: List[str] = []
 
@@ -194,9 +173,6 @@ def build_question_map(test_row: Dict) -> Tuple[Dict[str, Dict[str, str]], List[
 
 
 def get_stage_info(result_row: Optional[Dict]) -> Dict:
-    """
-    결과 시트 한 행을 바탕으로 현재 차수 상태 계산.
-    """
     if not result_row:
         return {
             "current_stage": 1,
@@ -249,10 +225,6 @@ def find_student(students: List[Dict], student_id: str) -> Optional[Dict]:
 
 
 def find_result_row(results: List[Dict], student_id: str, test_name: str) -> Tuple[Optional[int], Optional[Dict]]:
-    """
-    결과 시트에서 실제 row 번호와 row dict 반환.
-    row 번호는 구글시트 기준 2행부터 시작.
-    """
     for idx, row in enumerate(results, start=2):
         if (
             normalize_student_id(row.get("학생ID", "")) == student_id
@@ -340,31 +312,59 @@ def write_stage_result(
 
 
 # =========================================================
-# 구글 시트 연결
+# 캐시된 구글시트 연결
 # =========================================================
-try:
+@st.cache_resource
+def get_gspread_client():
     scope = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive",
     ]
-
     creds = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"],
         scopes=scope,
     )
-    client = gspread.authorize(creds)
+    return gspread.authorize(creds)
 
-    spreadsheet = client.open_by_url(SPREADSHEET_URL)
+
+@st.cache_resource
+def get_spreadsheet():
+    client = get_gspread_client()
+    return client.open_by_url(SPREADSHEET_URL)
+
+
+@st.cache_data(ttl=30)
+def load_students():
+    ws = get_spreadsheet().worksheet("학생정보")
+    return ws.get_all_records()
+
+
+@st.cache_data(ttl=30)
+def load_tests():
+    ws = get_spreadsheet().worksheet("시험정보")
+    return ws.get_all_records()
+
+
+@st.cache_data(ttl=10)
+def load_results():
+    ws = get_spreadsheet().worksheet("결과")
+    ensure_result_headers(ws)
+    return read_records_safe(ws)
+
+
+# =========================================================
+# 구글 시트 연결
+# =========================================================
+try:
+    spreadsheet = get_spreadsheet()
 
     students_ws = spreadsheet.worksheet("학생정보")
     tests_ws = spreadsheet.worksheet("시험정보")
     result_ws = spreadsheet.worksheet("결과")
 
-    ensure_result_headers(result_ws)
-
-    students = students_ws.get_all_records()
-    tests = tests_ws.get_all_records()
-    results = read_records_safe(result_ws)
+    students = load_students()
+    tests = load_tests()
+    results = load_results()
 
 except Exception as e:
     st.error("구글시트 연결 중 오류가 발생했습니다.")
@@ -566,6 +566,8 @@ if selected_test_name:
             current_stage=current_stage,
             wrong_nums=wrong_nums,
         )
+
+        load_results.clear()
 
         st.success(f"{current_stage}차 제출 완료")
 
