@@ -72,12 +72,62 @@ if available_tests:
     test_names = [t["시험명"] for t in available_tests]
     selected_test = st.selectbox("응시할 시험 선택", test_names)
 
-    st.subheader("답안 입력")
-    answers = st.text_input("답안을 입력하세요 (예: 1,2,3,4)")
+    # 선택한 시험의 전체 데이터 찾기
+    selected_test_data = None
+    for t in available_tests:
+        if t["시험명"] == selected_test:
+            selected_test_data = t
+            break
 
+    # 문항 열만 추출
+    question_cols = [k for k in selected_test_data.keys() if str(k).startswith("문항")]
+    question_cols = sorted(question_cols, key=lambda x: int(str(x).replace("문항", "")))
+
+    # -------------------------------
+    # 답안 입력
+    # -------------------------------
+    st.subheader("답안 입력")
+
+    answers_list = []
+
+    for q_col in question_cols:
+        q_num = str(q_col).replace("문항", "")
+        correct_value = str(selected_test_data[q_col]).strip()
+
+        # 복수 정답 문항: 예) 3,4
+        if "," in correct_value:
+            answer = st.multiselect(
+                f"{q_num}번",
+                ["1", "2", "3", "4", "5"],
+                key=f"q_{q_num}"
+            )
+            answer_text = ",".join(sorted(answer))
+            answers_list.append(answer_text)
+
+        # 단일 정답 문항: 예) 3
+        else:
+            answer = st.radio(
+                f"{q_num}번",
+                ["1", "2", "3", "4", "5"],
+                horizontal=True,
+                key=f"q_{q_num}"
+            )
+            answers_list.append(answer)
+
+    answers = "|".join(answers_list)
+
+    # -------------------------------
+    # 제출 버튼
+    # -------------------------------
     if st.button("제출하기"):
-        if not answers:
-            st.warning("답안을 입력하세요.")
+        has_empty = False
+        for a in answers_list:
+            if a == "":
+                has_empty = True
+                break
+
+        if has_empty:
+            st.warning("선택하지 않은 문항이 있습니다.")
         else:
             result_ws = spreadsheet.worksheet("결과")
             result_ws.append_row([
@@ -88,5 +138,6 @@ if available_tests:
                 answers
             ])
             st.success("제출 완료!")
+
 else:
     st.warning("응시 가능한 시험이 없습니다.")
