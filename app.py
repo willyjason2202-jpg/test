@@ -67,6 +67,20 @@ div.stButton > button {
     box-shadow: 0 4px 12px rgba(17, 24, 39, 0.04);
 }
 
+.q-number {
+    width: 36px;
+    height: 36px;
+    background-color: #ff4da6;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 16px;
+    margin-bottom: 6px;
+}
+
 /* 보조 텍스트 */
 .small-muted {
     color: #8b95a1;
@@ -118,6 +132,7 @@ div[role="radiogroup"] {
     opacity: 0.95;
 }
 
+
 /* section 제목 */
 .section-title {
     font-size: 20px;
@@ -125,6 +140,7 @@ div[role="radiogroup"] {
     color: #2b2f38;
     margin: 6px 0 12px 0;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -596,7 +612,7 @@ if selected_test_name:
 
             st.markdown(f"""
             <div class="q-card">
-                <div style="font-size:18px;font-weight:700;margin-bottom:10px;">{q_num}번</div>
+                <div class="q-number">{q_num}</div>
             """, unsafe_allow_html=True)
 
             if "," in correct_value:
