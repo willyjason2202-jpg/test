@@ -65,41 +65,28 @@ for t in tests:
     if str(t["학교"]).strip() == str(student["학교"]).strip():
         available_tests.append(t)
 
-# selected_test 기본값
-selected_test = None
-
 # -------------------------------
-# 시험 선택
+# 시험이 있을 때만 입력창 표시
 # -------------------------------
 if available_tests:
     test_names = [t["시험명"] for t in available_tests]
     selected_test = st.selectbox("응시할 시험 선택", test_names)
+
+    st.subheader("답안 입력")
+    answers = st.text_input("답안을 입력하세요 (예: 1,2,3,4)")
+
+    if st.button("제출하기"):
+        if not answers:
+            st.warning("답안을 입력하세요.")
+        else:
+            result_ws = spreadsheet.worksheet("결과")
+            result_ws.append_row([
+                student["학생ID"],
+                student["학생이름"],
+                student["학교"],
+                selected_test,
+                answers
+            ])
+            st.success("제출 완료!")
 else:
     st.warning("응시 가능한 시험이 없습니다.")
-
-# -------------------------------
-# 답안 입력
-# -------------------------------
-st.subheader("답안 입력")
-answers = st.text_input("답안을 입력하세요 (예: 1,2,3,4)")
-
-# -------------------------------
-# 제출 버튼
-# -------------------------------
-if st.button("제출하기"):
-    if not selected_test:
-        st.warning("응시할 시험을 먼저 선택하세요.")
-    elif not answers:
-        st.warning("답안을 입력하세요.")
-    else:
-        result_ws = spreadsheet.worksheet("결과")
-
-        result_ws.append_row([
-            student["학생ID"],
-            student["학생이름"],
-            student["학교"],
-            selected_test,
-            answers
-        ])
-
-        st.success("제출 완료!")
