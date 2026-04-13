@@ -6,6 +6,42 @@ st.set_page_config(page_title="학생 채점 시스템", layout="centered")
 st.title("학생 채점 시스템")
 
 # -------------------------------
+# 기본 스타일
+# -------------------------------
+st.markdown("""
+<style>
+div[data-testid="stForm"] {
+    border: none;
+    padding: 0;
+}
+div[data-testid="stFormSubmitButton"] button {
+    border-radius: 14px !important;
+    height: 48px !important;
+    font-weight: 700 !important;
+}
+.test-card {
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    margin-bottom: 12px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.q-card {
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    margin-bottom: 12px;
+    background: #ffffff;
+}
+.small-muted {
+    color: #6b7280;
+    font-size: 14px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# -------------------------------
 # 구글시트 연결
 # -------------------------------
 scope = [
@@ -54,14 +90,11 @@ if not student:
     st.error("등록되지 않은 학생입니다.")
     st.stop()
 
-# -------------------------------
-# 학생 정보 표시
-# -------------------------------
 st.subheader(f"{student['학생이름']} 학생")
 st.caption(f"학교: {student['학교']}")
 
 # -------------------------------
-# 학교에 맞는 시험 찾기
+# 학교별 시험 목록
 # -------------------------------
 available_tests = []
 for t in tests:
@@ -73,169 +106,267 @@ if not available_tests:
     st.stop()
 
 # -------------------------------
-# 시험 선택
+# 결과 행 찾기 함수
 # -------------------------------
-test_names = [t["시험명"] for t in available_tests]
-selected_test = st.selectbox(
-    "응시할 시험 선택",
-    test_names,
-    index=0
-)
-
-selected_test_data = None
-for t in available_tests:
-    if t["시험명"] == selected_test:
-        selected_test_data = t
-        break
-
-if not selected_test_data:
-    st.error("시험 정보를 찾을 수 없습니다.")
-    st.stop()
+def find_result_row(student_id, test_name):
+    for idx, r in enumerate(results, start=2):  # 시트 기준 실제 row 번호 (헤더가 1행)
+        if (
+            str(r.get("학생ID", "")).strip().upper() == student_id
+            and str(r.get("시험명", "")).strip() == test_name
+        ):
+            return idx, r
+    return None, None
 
 # -------------------------------
-# 이미 제출했는지 확인
+# 차수 / 오답문항 계산 함수
 # -------------------------------
-already_submitted = False
-for r in results:
-    if (
-        str(r.get("학생ID", "")).strip().upper() == student_id
-        and str(r.get("시험명", "")).strip() == selected_test
-    ):
-        already_submitted = True
-        break
+def parse_wrong_list(value):
+    text = str(value).strip()
+    if text == "" or text == "-":
+        return []
+    return [x.strip() for x in text.split(",") if x.strip()]
 
-if already_submitted:
-    st.warning("이미 제출한 시험입니다.")
-    st.stop()
+def get_stage_info(result_row):
+    if not result_row:
+        return {
+            "current_stage": 1,
+            "stage1_wrong": [],
+            "stage2_wrong": [],
+            "stage3_wrong": [],
+            "status": "1차대기"
+        }
+
+    stage1_wrong = parse_wrong_list(result_row.get("1차오답", "-"))
+    stage2_wrong = parse_wrong_list(result_row.get("2차오답", "-"))
+    stage3_wrong = parse_wrong_list(result_row.get("3차오답", "-"))
+
+    if str(result_row.get("3차오답", "")).strip() not in ["", None]:
+        return {
+            "current_stage": 4,
+            "stage1_wrong": stage1_wrong,
+            "stage2_wrong": stage2_wrong,
+            "stage3_wrong": stage3_wrong,
+            "status": "완료"
+        }
+
+    if str(result_row.get("2차오답", "")).strip() not in ["", None]:
+        return {
+            "current_stage": 3,
+            "stage1_wrong": stage1_wrong,
+            "stage2_wrong": stage2_wrong,
+            "stage3_wrong": stage3_wrong,
+            "status": "3차가능"
+        }
+
+    if str(result_row.get("1차오답", "")).strip() not in ["", None]:
+        return {
+            "current_stage": 2,
+            "stage1_wrong": stage1_wrong,
+            "stage2_wrong": stage2_wrong,
+            "stage3_wrong": stage3_wrong,
+            "status": "2차가능"
+        }
+
+    return {
+        "current_stage": 1,
+        "stage1_wrong": [],
+        "stage2_wrong": [],
+        "stage3_wrong": [],
+        "status": "1차대기"
+    }
 
 # -------------------------------
-# 문항 열 추출
+# session_state 초기화
 # -------------------------------
-question_cols = [k for k in selected_test_data.keys() if str(k).startswith("문항")]
-question_cols = sorted(question_cols, key=lambda x: int(str(x).replace("문항", "")))
-
-# 실제 정답이 있는 문항만 사용
-valid_question_cols = []
-for q_col in question_cols:
-    value = str(selected_test_data[q_col]).strip()
-    if value != "":
-        valid_question_cols.append(q_col)
-
-if not valid_question_cols:
-    st.warning("시험 문항 정보가 없습니다.")
-    st.stop()
+if "selected_test_name" not in st.session_state:
+    st.session_state.selected_test_name = None
 
 # -------------------------------
-# form 내부에서 답안 입력
+# 시험 목록 표시
 # -------------------------------
-st.subheader("답안 입력")
+st.subheader("응시 가능한 시험")
 
-with st.form("answer_form", clear_on_submit=False):
-    answers_list = []
+for test in available_tests:
+    test_name = str(test["시험명"]).strip()
+    row_num, result_row = find_result_row(student_id, test_name)
+    info = get_stage_info(result_row)
 
-    for q_col in valid_question_cols:
-        q_num = str(q_col).replace("문항", "")
-        correct_value = str(selected_test_data[q_col]).strip()
+    c1, c2 = st.columns([4, 1])
 
-        st.markdown(f"**{q_num}번**")
+    with c1:
+        st.markdown(f"""
+        <div class="test-card">
+            <div style="font-size:18px;font-weight:700;">{test_name}</div>
+            <div class="small-muted">
+                1차: {len(info['stage1_wrong'])}문항 틀림 /
+                2차: {len(info['stage2_wrong'])}문항 틀림 /
+                3차: {len(info['stage3_wrong'])}문항 틀림
+            </div>
+            <div class="small-muted">현재 상태: {info['status']}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        # 복수 정답 문항
-        if "," in correct_value:
-            selected = st.segmented_control(
-                label=f"{q_num}번",
-                options=["1", "2", "3", "4", "5"],
-                selection_mode="multi",
-                default=[],
-                key=f"q_{q_num}",
-                label_visibility="collapsed",
-                width="stretch"
-            )
-            answer_text = ",".join(sorted(selected)) if selected else ""
-            answers_list.append(answer_text)
-
-        # 단일 정답 문항
+    with c2:
+        if info["current_stage"] <= 3:
+            if st.button("응시", key=f"open_{test_name}"):
+                st.session_state.selected_test_name = test_name
+                st.rerun()
         else:
-            selected = st.segmented_control(
-                label=f"{q_num}번",
-                options=["1", "2", "3", "4", "5"],
-                selection_mode="single",
-                default=None,
-                key=f"q_{q_num}",
-                label_visibility="collapsed",
-                width="stretch"
-            )
-            answers_list.append(selected if selected else "")
-
-    submitted = st.form_submit_button("제출하기", use_container_width=True)
+            st.button("완료", key=f"done_{test_name}", disabled=True)
 
 # -------------------------------
-# 제출 후 처리
+# 선택한 시험 응시 화면
 # -------------------------------
-if submitted:
-    # 미응답 체크
-    empty_questions = []
-    for idx, ans in enumerate(answers_list, start=1):
-        if ans == "":
-            empty_questions.append(str(idx))
+selected_test_name = st.session_state.selected_test_name
 
-    if empty_questions:
-        st.warning(f"선택하지 않은 문항이 있습니다: {', '.join(empty_questions)}번")
+if selected_test_name:
+    selected_test_data = None
+    for t in available_tests:
+        if str(t["시험명"]).strip() == selected_test_name:
+            selected_test_data = t
+            break
+
+    if not selected_test_data:
+        st.error("시험 정보를 찾을 수 없습니다.")
         st.stop()
 
-    # 정답 / 학생답 비교
-    correct_answers = []
-    for q_col in valid_question_cols:
-        correct_answers.append(str(selected_test_data[q_col]).strip())
+    row_num, result_row = find_result_row(student_id, selected_test_name)
+    info = get_stage_info(result_row)
+    current_stage = info["current_stage"]
 
-    total_questions = len(correct_answers)
-    score = 0
-    wrong_nums = []
-    mark_list = []
+    if current_stage > 3:
+        st.info("이 시험은 3차까지 모두 완료되었습니다.")
+        st.stop()
 
-    for i, (student_ans, correct_ans) in enumerate(zip(answers_list, correct_answers), start=1):
-        # 복수 정답은 순서 통일 후 비교
-        if "," in correct_ans:
-            correct_norm = ",".join(sorted([x.strip() for x in correct_ans.split(",") if x.strip()]))
-            student_norm = ",".join(sorted([x.strip() for x in student_ans.split(",") if x.strip()]))
-        else:
-            correct_norm = correct_ans.strip()
-            student_norm = student_ans.strip()
+    st.divider()
+    st.subheader(f"{selected_test_name} - {current_stage}차 응시")
 
-        if student_norm == correct_norm:
-            score += 1
-            mark_list.append("O")
-        else:
-            wrong_nums.append(str(i))
-            mark_list.append("X")
+    # 전체 문항 추출
+    question_cols = [k for k in selected_test_data.keys() if str(k).startswith("문항")]
+    question_cols = sorted(question_cols, key=lambda x: int(str(x).replace("문항", "")))
 
-    answers_text = "|".join(answers_list)
-    wrong_text = ",".join(wrong_nums) if wrong_nums else "-"
-    mark_text = "|".join(mark_list)
+    all_question_nums = []
+    for q_col in question_cols:
+        correct_value = str(selected_test_data[q_col]).strip()
+        if correct_value != "":
+            q_num = str(q_col).replace("문항", "")
+            all_question_nums.append(q_num)
 
-    # 결과 시트 저장
-    # 결과 시트 첫 행 헤더 예시:
-    # 학생ID | 학생이름 | 학교 | 시험명 | 제출답안 | 점수 | 총문항 | 오답번호 | 정오표
-    result_ws.append_row([
-        student["학생ID"],
-        student["학생이름"],
-        student["학교"],
-        selected_test,
-        answers_text,
-        score,
-        total_questions,
-        wrong_text,
-        mark_text
-    ])
-
-    # 즉석 결과 표시
-    st.success("제출 완료!")
-    st.info(f"점수: {score} / {total_questions}")
-
-    if wrong_nums:
-        st.error(f"오답 번호: {', '.join(wrong_nums)}")
+    # 현재 차수에 보여줄 문항 번호 결정
+    if current_stage == 1:
+        target_question_nums = all_question_nums
+    elif current_stage == 2:
+        target_question_nums = info["stage1_wrong"]
     else:
-        st.success("전부 정답입니다.")
+        target_question_nums = info["stage2_wrong"]
 
-    with st.expander("문항별 결과 보기"):
-        for i, (student_ans, correct_ans, ox) in enumerate(zip(answers_list, correct_answers, mark_list), start=1):
-            st.write(f"{i}번 | 제출: {student_ans} | 정답: {correct_ans} | 결과: {ox}")
+    if not target_question_nums:
+        st.success("이번 차수에 다시 풀 문항이 없습니다.")
+        st.stop()
+
+    with st.form("answer_form", clear_on_submit=False):
+        answers_dict = {}
+
+        for q_num in target_question_nums:
+            q_col = f"문항{q_num}"
+            correct_value = str(selected_test_data[q_col]).strip()
+
+            st.markdown(f"""
+            <div class="q-card">
+                <div style="font-size:18px;font-weight:700;margin-bottom:10px;">{q_num}번</div>
+            """, unsafe_allow_html=True)
+
+            if "," in correct_value:
+                selected = st.pills(
+                    label=f"{q_num}번",
+                    options=["1", "2", "3", "4", "5"],
+                    selection_mode="multi",
+                    default=[],
+                    key=f"q_{current_stage}_{q_num}",
+                    label_visibility="collapsed",
+                    width="stretch"
+                )
+                answers_dict[q_num] = ",".join(sorted(selected)) if selected else ""
+            else:
+                selected = st.pills(
+                    label=f"{q_num}번",
+                    options=["1", "2", "3", "4", "5"],
+                    selection_mode="single",
+                    default=None,
+                    key=f"q_{current_stage}_{q_num}",
+                    label_visibility="collapsed",
+                    width="stretch"
+                )
+                answers_dict[q_num] = selected if selected else ""
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        submitted = st.form_submit_button(f"{current_stage}차 제출하기", use_container_width=True)
+
+    if submitted:
+        empty_questions = [q for q, a in answers_dict.items() if a == ""]
+        if empty_questions:
+            st.warning(f"선택하지 않은 문항이 있습니다: {', '.join(empty_questions)}번")
+            st.stop()
+
+        wrong_nums = []
+
+        for q_num in target_question_nums:
+            q_col = f"문항{q_num}"
+            correct_ans = str(selected_test_data[q_col]).strip()
+            student_ans = answers_dict[q_num].strip()
+
+            if "," in correct_ans:
+                correct_norm = ",".join(sorted([x.strip() for x in correct_ans.split(",") if x.strip()]))
+                student_norm = ",".join(sorted([x.strip() for x in student_ans.split(",") if x.strip()]))
+            else:
+                correct_norm = correct_ans
+                student_norm = student_ans
+
+            if student_norm != correct_norm:
+                wrong_nums.append(q_num)
+
+        wrong_text = ",".join(wrong_nums) if wrong_nums else "-"
+        wrong_count = len(wrong_nums)
+
+        # 결과 저장 / 업데이트
+        if row_num is None:
+            # 첫 응시(1차)
+            result_ws.append_row([
+                student["학생ID"],
+                student["학생이름"],
+                student["학교"],
+                selected_test_name,
+                wrong_text,
+                wrong_count,
+                "",
+                "",
+                "",
+                "",
+                "2차가능" if wrong_count > 0 else "완료"
+            ])
+        else:
+            if current_stage == 2:
+                result_ws.update(f"G{row_num}", wrong_text)   # 2차오답
+                result_ws.update(f"H{row_num}", wrong_count)  # 2차오답수
+                result_ws.update(f"K{row_num}", "3차가능" if wrong_count > 0 else "완료")
+            elif current_stage == 3:
+                result_ws.update(f"I{row_num}", wrong_text)   # 3차오답
+                result_ws.update(f"J{row_num}", wrong_count)  # 3차오답수
+                result_ws.update(f"K{row_num}", "완료")
+            else:
+                # 혹시 1차 재기록 상황 대비
+                result_ws.update(f"E{row_num}", wrong_text)   # 1차오답
+                result_ws.update(f"F{row_num}", wrong_count)  # 1차오답수
+                result_ws.update(f"K{row_num}", "2차가능" if wrong_count > 0 else "완료")
+
+        st.success(f"{current_stage}차 제출 완료")
+
+        if wrong_nums:
+            st.error(f"틀린 문항: {', '.join(wrong_nums)}")
+            st.info(f"틀린 문항 수: {wrong_count}")
+        else:
+            st.success("모든 문항 정답입니다.")
+
+        st.session_state.selected_test_name = None
+        st.rerun()
