@@ -1,40 +1,42 @@
 import streamlit as st
+import pandas as pd
 
-st.title("채점 프로그램")
+st.title("학생 채점 시스템")
 
-# 시험 선택 (임시)
-test_name = st.selectbox("시험 선택", ["4월 모의고사"])
+# -------------------------
+# 1. URL에서 학생ID 읽기
+# -------------------------
+params = st.query_params
+student_id = str(params.get("student", "")).strip()
 
-st.write(f"선택한 시험: {test_name}")
+if not student_id:
+    st.error("학생 전용 링크가 아닙니다.")
+    st.stop()
 
-# 정답 (임시)
-answer_key = [3,3,4,1,3,5,4,1,3,5,2,5,1,4,2,4,5,3,4,5,5,3,4,5,3,5,3,2,4]
+# -------------------------
+# 2. 학생정보 (임시 데이터)
+# -------------------------
+students = [
+    {"학생ID": "1", "학생이름": "김민수", "학교": "예일여고"},
+    {"학생ID": "2", "학생이름": "이서연", "학교": "대성고"},
+    {"학생ID": "3", "학생이름": "박준호", "학교": "예일여고"},
+]
 
-st.write("답안을 선택하세요")
+# -------------------------
+# 3. 학생 찾기
+# -------------------------
+student = None
+for s in students:
+    if s["학생ID"] == student_id:
+        student = s
+        break
 
-student_answers = []
+if not student:
+    st.error("등록되지 않은 학생입니다.")
+    st.stop()
 
-for i in range(len(answer_key)):
-    ans = st.radio(
-        f"{i+1}번",
-        ["", "1", "2", "3", "4", "5"],
-        horizontal=True,
-        key=i
-    )
-    student_answers.append(ans)
-
-if st.button("채점하기"):
-    correct = 0
-    wrong_list = []
-
-    for i in range(len(answer_key)):
-        try:
-            if int(student_answers[i]) == answer_key[i]:
-                correct += 1
-            else:
-                wrong_list.append(i+1)
-        except:
-            wrong_list.append(i+1)
-
-    st.write(f"점수: {correct}/{len(answer_key)}")
-    st.write(f"오답: {wrong_list}")
+# -------------------------
+# 4. 이름 출력
+# -------------------------
+st.subheader(f"{student['학생이름']} 학생")
+st.caption(f"학교: {student['학교']}")
