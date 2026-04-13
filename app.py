@@ -15,7 +15,7 @@ creds = Credentials.from_service_account_info(
 )
 client = gspread.authorize(creds)
 
-spreadsheet = client.open_by_url("여기에_지금_공유한_구글시트_주소_정확히_붙여넣기")
+spreadsheet = client.open_by_url("https://docs.google.com/spreadsheets/d/1ABCxyz123456/edit#gid=0")
 
 students_ws = spreadsheet.worksheet("학생정보")
 tests_ws = spreadsheet.worksheet("시험정보")
