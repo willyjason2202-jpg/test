@@ -9,8 +9,8 @@ from google.oauth2.service_account import Credentials
 # =========================================================
 # 기본 설정
 # =========================================================
-st.set_page_config(page_title="학생 채점 시스템", layout="centered")
-st.title("학생 채점 시스템")
+st.set_page_config(page_title="Matice Assignment", layout="centered")
+st.title("Matice Assignment")
 
 st.markdown("""
 <style>
