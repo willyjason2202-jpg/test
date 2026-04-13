@@ -614,7 +614,6 @@ if selected_test_name:
 
             st.markdown(f"""
             <div class="q-number">{q_num}번</div>
-            <div class="q-card">
             """, unsafe_allow_html=True)
 
             if "," in correct_value:
@@ -640,7 +639,7 @@ if selected_test_name:
                 )
                 answers_dict[q_num] = selected if selected else ""
 
-            st.markdown("</div>", unsafe_allow_html=True)
+           
 
         col_submit, col_back = st.columns(2)
         with col_submit:
