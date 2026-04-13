@@ -65,7 +65,21 @@ result_ws = spreadsheet.worksheet("결과")
 
 students = students_ws.get_all_records()
 tests = tests_ws.get_all_records()
-results = result_ws.get_all_records()
+
+result_values = result_ws.get_all_values()
+
+if len(result_values) <= 1:
+    results = []
+else:
+    headers = result_values[0]
+    rows = result_values[1:]
+    results = []
+
+    for row in rows:
+        # 행 길이를 헤더 길이에 맞춤
+        padded_row = row + [""] * (len(headers) - len(row))
+        row_dict = dict(zip(headers, padded_row))
+        results.append(row_dict)
 
 # -------------------------------
 # 학생 ID 읽기
