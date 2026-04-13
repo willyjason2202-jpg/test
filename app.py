@@ -74,7 +74,7 @@ div.stButton > button {
     min-width: 62px;
     height: 30px;
     padding: 0 14px;
-    background-color: #ec4899;
+    background-color: #8ea3ff;
     color: white;
     border-radius: 999px;
     font-weight: 400;
