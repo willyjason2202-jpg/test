@@ -35,7 +35,7 @@ div[data-testid="stFormSubmitButton"] button {
     padding: 14px 16px;
     border: 1px solid #e5e7eb;
     border-radius: 16px;
-    margin-bottom: 12px;
+    margin-bottom: 4px;
     background: #ffffff;
 }
 .small-muted {
