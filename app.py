@@ -13,10 +13,14 @@ st.set_page_config(page_title="Matice Assignment", layout="centered")
 
 st.markdown("""
 <style>
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
 
 html, body, [class*="css"] {
-    font-family: 'Pretendard', sans-serif;
+    font-family: 'Noto Sans KR', sans-serif;
+}
+
+h1 {
+    font-weight: 700;
 }
 
 div[data-testid="stForm"] {
