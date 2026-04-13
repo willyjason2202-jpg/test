@@ -59,7 +59,7 @@ div.stButton > button {
 
 /* 문항 카드 */
 .q-card {
-    padding: 14px 16px;
+    padding: 10px 14px;
     border: 1px solid #eceef5;
     border-radius: 18px;
     margin-bottom: 4px;
@@ -68,17 +68,19 @@ div.stButton > button {
 }
 
 .q-number {
-    width: 36px;
-    height: 36px;
-    background-color: #ff4da6;
-    color: white;
-    border-radius: 50%;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    min-width: 62px;
+    height: 30px;
+    padding: 0 14px;
+    background-color: #ff4da6;
+    color: white;
+    border-radius: 999px;
     font-weight: 800;
-    font-size: 16px;
-    margin-bottom: 6px;
+    font-size: 15px;
+    line-height: 1;
+    margin-bottom: 4px;
 }
 
 /* 보조 텍스트 */
@@ -612,7 +614,7 @@ if selected_test_name:
 
             st.markdown(f"""
             <div class="q-card">
-                <div class="q-number">{q_num}</div>
+                <div class="q-number">{q_num}번</div>
             """, unsafe_allow_html=True)
 
             if "," in correct_value:
