@@ -74,10 +74,10 @@ div.stButton > button {
     min-width: 62px;
     height: 30px;
     padding: 0 14px;
-    background-color: #ff4da6;
+    background-color: #ec4899;
     color: white;
     border-radius: 999px;
-    font-weight: 800;
+    font-weight: 400;
     font-size: 15px;
     line-height: 1;
     margin-bottom: 4px;
