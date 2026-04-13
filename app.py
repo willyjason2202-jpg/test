@@ -13,52 +13,128 @@ st.set_page_config(page_title="Matice Assignment", layout="centered")
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap');
+
+.stApp {
+    background-color: #f7f8fc;
+}
 
 html, body, [class*="css"] {
     font-family: 'Noto Sans KR', sans-serif;
 }
 
-h1 {
-    font-weight: 700;
+/* 메인 영역 폭/여백 */
+.block-container {
+    padding-top: 1.2rem;
+    padding-bottom: 2rem;
+    max-width: 760px;
 }
 
+/* 기본 form 테두리 제거 */
 div[data-testid="stForm"] {
     border: none;
     padding: 0;
+    background: transparent;
 }
 
-div[data-testid="stFormSubmitButton"] button {
+/* 버튼 공통 */
+div[data-testid="stFormSubmitButton"] button,
+div.stButton > button {
     border-radius: 14px !important;
     height: 48px !important;
     font-weight: 700 !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
 }
 
+/* 시험 카드 */
 .test-card {
-    padding: 14px 16px;
-    border: 1px solid #e5e7eb;
-    border-radius: 16px;
+    padding: 16px 18px;
+    border: 1px solid #eceef5;
+    border-radius: 20px;
     margin-bottom: 12px;
     background: #ffffff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    box-shadow: 0 6px 18px rgba(17, 24, 39, 0.05);
 }
 
+/* 문항 카드 */
 .q-card {
     padding: 14px 16px;
-    border: 1px solid #e5e7eb;
-    border-radius: 16px;
+    border: 1px solid #eceef5;
+    border-radius: 18px;
     margin-bottom: 4px;
     background: #ffffff;
+    box-shadow: 0 4px 12px rgba(17, 24, 39, 0.04);
 }
 
+/* 보조 텍스트 */
 .small-muted {
-    color: #6b7280;
+    color: #8b95a1;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* 알림 박스 둥글게 */
+div[data-baseweb="notification"] {
+    border-radius: 16px !important;
+}
+
+/* 라디오/선택 pill 영역 조금 여유 */
+div[role="radiogroup"] {
+    gap: 6px !important;
+}
+
+/* 상단 앱 헤더 */
+.app-header {
+    background: linear-gradient(135deg, #6c8cff 0%, #8ea3ff 100%);
+    border-radius: 24px;
+    padding: 20px 20px 18px 20px;
+    margin-bottom: 18px;
+    box-shadow: 0 10px 24px rgba(108, 140, 255, 0.22);
+    color: white;
+}
+
+.app-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.18);
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.app-title {
+    font-family: 'Nunito', 'Noto Sans KR', sans-serif;
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0;
+}
+
+.app-subtitle {
+    margin-top: 6px;
     font-size: 14px;
+    opacity: 0.95;
+}
+
+/* section 제목 */
+.section-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #2b2f38;
+    margin: 6px 0 12px 0;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("Matice Assignment")
+st.markdown("""
+<div class="app-header">
+    <div class="app-badge">STUDENT APP</div>
+    <div class="app-title">Matice Assignment</div>
+    <div class="app-subtitle">시험 응시와 성취도를 한눈에 확인하세요</div>
+</div>
+""", unsafe_allow_html=True)
 
 # =========================================================
 # 상수
@@ -405,8 +481,14 @@ if not student:
     st.error("등록되지 않은 학생입니다.")
     st.stop()
 
-st.subheader(f"{student['학생이름']} 학생")
-st.caption(f"학교: {student['학교']}")
+st.markdown(f"""
+<div class="test-card" style="margin-bottom:16px;">
+    <div style="font-size:20px; font-weight:800; color:#2b2f38;">
+        {student['학생이름']} 학생
+    </div>
+    <div class="small-muted">학교: {student['학교']}</div>
+</div>
+""", unsafe_allow_html=True)
 
 
 # =========================================================
@@ -429,7 +511,7 @@ if "selected_test_name" not in st.session_state:
 # =========================================================
 # 시험 목록 화면
 # =========================================================
-st.subheader("응시 가능한 시험")
+st.markdown('<div class="section-title">응시 가능한 시험</div>', unsafe_allow_html=True)
 
 for test in available_tests:
     test_name = normalize_text(test.get("시험명", ""))
