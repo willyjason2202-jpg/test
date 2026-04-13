@@ -613,8 +613,8 @@ if selected_test_name:
             correct_value = question_map[q_num]["answer"]
 
             st.markdown(f"""
+            <div class="q-number">{q_num}번</div>
             <div class="q-card">
-                <div class="q-number">{q_num}번</div>
             """, unsafe_allow_html=True)
 
             if "," in correct_value:
