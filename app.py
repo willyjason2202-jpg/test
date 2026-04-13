@@ -145,16 +145,22 @@ def find_result_row(student_id_value, test_name):
             return idx, r
     return None, None
 
+def safe_int(value):
+    try:
+        return int(str(value).strip())
+    except:
+        return 0
+        
 def get_stage_info(result_row):
-    """
-    현재 차수와 각 차수 오답 목록 반환
-    """
     if not result_row:
         return {
             "current_stage": 1,
             "stage1_wrong": [],
             "stage2_wrong": [],
             "stage3_wrong": [],
+            "stage1_count": 0,
+            "stage2_count": 0,
+            "stage3_count": 0,
             "status": "1차대기"
         }
 
@@ -162,46 +168,30 @@ def get_stage_info(result_row):
     stage2_wrong = parse_wrong_list(result_row.get("2차오답", "-"))
     stage3_wrong = parse_wrong_list(result_row.get("3차오답", "-"))
 
-    v1 = str(result_row.get("1차오답", "")).strip()
-    v2 = str(result_row.get("2차오답", "")).strip()
-    v3 = str(result_row.get("3차오답", "")).strip()
+    stage1_count = safe_int(result_row.get("1차오답수", 0))
+    stage2_count = safe_int(result_row.get("2차오답수", 0))
+    stage3_count = safe_int(result_row.get("3차오답수", 0))
 
-    # 3차까지 기록 있으면 완료
-    if v3 != "":
-        return {
-            "current_stage": 4,
-            "stage1_wrong": stage1_wrong,
-            "stage2_wrong": stage2_wrong,
-            "stage3_wrong": stage3_wrong,
-            "status": "완료"
-        }
+    status = str(result_row.get("최종상태", "")).strip()
 
-    # 2차 기록이 있으면 3차 가능
-    if v2 != "":
-        return {
-            "current_stage": 3,
-            "stage1_wrong": stage1_wrong,
-            "stage2_wrong": stage2_wrong,
-            "stage3_wrong": stage3_wrong,
-            "status": "3차가능"
-        }
-
-    # 1차 기록이 있으면 2차 가능
-    if v1 != "":
-        return {
-            "current_stage": 2,
-            "stage1_wrong": stage1_wrong,
-            "stage2_wrong": stage2_wrong,
-            "stage3_wrong": stage3_wrong,
-            "status": "2차가능"
-        }
+    if status == "완료":
+        current_stage = 4
+    elif status == "3차가능":
+        current_stage = 3
+    elif status == "2차가능":
+        current_stage = 2
+    else:
+        current_stage = 1
 
     return {
-        "current_stage": 1,
-        "stage1_wrong": [],
-        "stage2_wrong": [],
-        "stage3_wrong": [],
-        "status": "1차대기"
+        "current_stage": current_stage,
+        "stage1_wrong": stage1_wrong,
+        "stage2_wrong": stage2_wrong,
+        "stage3_wrong": stage3_wrong,
+        "stage1_count": stage1_count,
+        "stage2_count": stage2_count,
+        "stage3_count": stage3_count,
+        "status": status if status else "1차대기"
     }
 
 def build_question_map(test_row):
@@ -277,9 +267,9 @@ for test in available_tests:
         <div class="test-card">
             <div style="font-size:18px;font-weight:700;">{test_name}</div>
             <div class="small-muted">
-                1차: {len(info['stage1_wrong'])}문항 틀림 /
-                2차: {len(info['stage2_wrong'])}문항 틀림 /
-                3차: {len(info['stage3_wrong'])}문항 틀림
+                1차: {info['stage1_count']}문항 틀림 /
+                2차: {info['stage2_count']}문항 틀림 /
+                3차: {info['stage3_count']}문항 틀림
             </div>
             <div class="small-muted">현재 상태: {info['status']}</div>
         </div>
