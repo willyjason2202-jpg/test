@@ -467,7 +467,7 @@ if selected_test_name:
     current_stage = stage_info["current_stage"]
 
     if current_stage > 3:
-        st.info("이 시험은 3차까지 모두 완료되었습니다.")
+        
         st.stop()
 
     question_map, all_question_nums = build_question_map(selected_test)
