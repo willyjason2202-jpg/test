@@ -24,7 +24,7 @@ students = students_ws.get_all_records()
 tests = tests_ws.get_all_records()
 
 params = st.query_params
-student_id = str(params.get("student", "")).strip()
+student_id = str(params.get("student", "")).strip().upper()
 
 if not student_id:
     st.error("학생 전용 링크가 아닙니다.")
