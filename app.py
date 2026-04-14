@@ -225,7 +225,25 @@ def normalize_subjective_answer(answer: str) -> str:
     text = normalize_text(answer).lower()
     text = re.sub(r"\s+", " ", text)
     return text
+    
+def get_question_type(correct_value: str) -> str:
+    value = normalize_text(correct_value)
+    value_no_space = value.replace(" ", "")
 
+    if re.fullmatch(r"\d+(,\d+)*", value_no_space):
+        return "multiple_choice"
+    return "subjective"
+
+
+def normalize_objective_answer(answer: str) -> str:
+    return normalize_text(answer).replace(" ", "")
+
+
+def normalize_subjective_answer(answer: str) -> str:
+    text = normalize_text(answer).lower()
+    text = re.sub(r"\s+", " ", text)
+    return text
+    
 def compare_answer(student_ans: str, correct_ans: str) -> bool:
     q_type = get_question_type(correct_ans)
 
@@ -241,7 +259,7 @@ def compare_answer(student_ans: str, correct_ans: str) -> bool:
 
         return normalize_objective_answer(student_ans) == normalize_objective_answer(correct_ans)
 
-    return normalize_subjective_answer(student_ans) == normalize_subjective_answer(correct_ans)s
+    return normalize_subjective_answer(student_ans) == normalize_subjective_answer(correct_ans)
 
 
 def read_records_safe(ws) -> List[Dict]:
@@ -628,9 +646,6 @@ if selected_test_name:
             st.rerun()
         st.stop()
 
-    # =========================
-    # ✨ 핵심: 응시 폼
-    # =========================
     with st.form("answer_form", clear_on_submit=False):
         answers_dict: Dict[str, str] = {}
 
@@ -641,7 +656,6 @@ if selected_test_name:
             <div class="q-number">{q_num}번</div>
             """, unsafe_allow_html=True)
 
-            # 🔥 여기부터 핵심 로직
             q_type = get_question_type(correct_value)
 
             if q_type == "multiple_choice":
@@ -669,15 +683,29 @@ if selected_test_name:
                     answers_dict[q_num] = selected if selected else ""
 
             else:
-                text_answer = st.text_input(
-                    label=f"{q_num}번",
-                    key=f"q_{current_stage}_{selected_test_name}_{q_num}",
-                    placeholder="영어 소문자로 입력",
-                    label_visibility="collapsed",
-                )
-                answers_dict[q_num] = text_answer
+                parts = split_subjective_answers(correct_value)
 
-        # 🔥 for문 끝난 후 버튼
+                if len(parts) == 1:
+                    text_answer = st.text_input(
+                        label=f"{q_num}번",
+                        key=f"q_{current_stage}_{selected_test_name}_{q_num}",
+                        placeholder="영어 소문자로 입력",
+                        label_visibility="collapsed",
+                    )
+                    answers_dict[q_num] = text_answer
+                else:
+                    multi_answers = []
+
+                    for idx, _ in enumerate(parts, start=1):
+                        text_answer = st.text_input(
+                            label=f"{q_num}-{idx}",
+                            key=f"q_{current_stage}_{selected_test_name}_{q_num}_{idx}",
+                            placeholder=f"{idx}번째 문장을 입력하세요",
+                        )
+                        multi_answers.append(text_answer)
+
+                    answers_dict[q_num] = " || ".join(multi_answers)
+
         col_submit, col_back = st.columns(2)
 
         with col_submit:
@@ -692,9 +720,6 @@ if selected_test_name:
                 use_container_width=True,
             )
 
-    # =========================
-    # 버튼 동작
-    # =========================
     if go_back:
         st.session_state.selected_test_name = None
         st.rerun()
