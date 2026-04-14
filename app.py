@@ -204,21 +204,44 @@ def safe_int(value) -> int:
     except Exception:
         return 0
 
+def get_question_type(correct_value: str) -> str:
+    """
+    - 3 / 2,4 / 1,3,5  -> 객관식
+    - make a difference -> 서술형
+    """
+    value = normalize_text(correct_value)
+    value_no_space = value.replace(" ", "")
+
+    if re.fullmatch(r"\d+(,\d+)*", value_no_space):
+        return "multiple_choice"
+    return "subjective"
+
+
+def normalize_objective_answer(answer: str) -> str:
+    return normalize_text(answer).replace(" ", "")
+
+
+def normalize_subjective_answer(answer: str) -> str:
+    text = normalize_text(answer).lower()
+    text = re.sub(r"\s+", " ", text)
+    return text
 
 def compare_answer(student_ans: str, correct_ans: str) -> bool:
-    student_ans = normalize_text(student_ans)
-    correct_ans = normalize_text(correct_ans)
+    q_type = get_question_type(correct_ans)
 
-    if "," in correct_ans:
-        correct_norm = ",".join(
-            sorted([x.strip() for x in correct_ans.split(",") if x.strip()])
-        )
-        student_norm = ",".join(
-            sorted([x.strip() for x in student_ans.split(",") if x.strip()])
-        )
-        return student_norm == correct_norm
+    if q_type == "multiple_choice":
+        if "," in normalize_objective_answer(correct_ans):
+            correct_norm = ",".join(
+                sorted([x.strip() for x in normalize_objective_answer(correct_ans).split(",") if x.strip()])
+            )
+            student_norm = ",".join(
+                sorted([x.strip() for x in normalize_objective_answer(student_ans).split(",") if x.strip()])
+            )
+            return student_norm == correct_norm
 
-    return student_ans == correct_ans
+        return normalize_objective_answer(student_ans) == normalize_objective_answer(correct_ans)
+
+    return normalize_subjective_answer(student_ans) == normalize_subjective_answer(correct_ans)s
 
 
 def read_records_safe(ws) -> List[Dict]:
@@ -581,7 +604,6 @@ if selected_test_name:
     current_stage = stage_info["current_stage"]
 
     if current_stage > 3:
-        
         st.stop()
 
     question_map, all_question_nums = build_question_map(selected_test)
@@ -606,6 +628,9 @@ if selected_test_name:
             st.rerun()
         st.stop()
 
+    # =========================
+    # ✨ 핵심: 응시 폼
+    # =========================
     with st.form("answer_form", clear_on_submit=False):
         answers_dict: Dict[str, str] = {}
 
@@ -616,43 +641,60 @@ if selected_test_name:
             <div class="q-number">{q_num}번</div>
             """, unsafe_allow_html=True)
 
-            if "," in correct_value:
-                selected = st.pills(
-                    label=f"{q_num}번",
-                    options=["1", "2", "3", "4", "5"],
-                    selection_mode="multi",
-                    default=[],
-                    key=f"q_{current_stage}_{selected_test_name}_{q_num}",
-                    label_visibility="collapsed",
-                    width="stretch",
-                )
-                answers_dict[q_num] = ",".join(sorted(selected)) if selected else ""
+            # 🔥 여기부터 핵심 로직
+            q_type = get_question_type(correct_value)
+
+            if q_type == "multiple_choice":
+                if "," in normalize_objective_answer(correct_value):
+                    selected = st.pills(
+                        label=f"{q_num}번",
+                        options=["1", "2", "3", "4", "5"],
+                        selection_mode="multi",
+                        default=[],
+                        key=f"q_{current_stage}_{selected_test_name}_{q_num}",
+                        label_visibility="collapsed",
+                        width="stretch",
+                    )
+                    answers_dict[q_num] = ",".join(sorted(selected)) if selected else ""
+                else:
+                    selected = st.pills(
+                        label=f"{q_num}번",
+                        options=["1", "2", "3", "4", "5"],
+                        selection_mode="single",
+                        default=None,
+                        key=f"q_{current_stage}_{selected_test_name}_{q_num}",
+                        label_visibility="collapsed",
+                        width="stretch",
+                    )
+                    answers_dict[q_num] = selected if selected else ""
+
             else:
-                selected = st.pills(
+                text_answer = st.text_input(
                     label=f"{q_num}번",
-                    options=["1", "2", "3", "4", "5"],
-                    selection_mode="single",
-                    default=None,
                     key=f"q_{current_stage}_{selected_test_name}_{q_num}",
+                    placeholder="영어 소문자로 입력",
                     label_visibility="collapsed",
-                    width="stretch",
                 )
-                answers_dict[q_num] = selected if selected else ""
+                answers_dict[q_num] = text_answer
 
-           
-
+        # 🔥 for문 끝난 후 버튼
         col_submit, col_back = st.columns(2)
+
         with col_submit:
             submitted = st.form_submit_button(
                 f"{current_stage}차 제출하기",
                 use_container_width=True,
             )
+
         with col_back:
             go_back = st.form_submit_button(
                 "목록으로",
                 use_container_width=True,
             )
 
+    # =========================
+    # 버튼 동작
+    # =========================
     if go_back:
         st.session_state.selected_test_name = None
         st.rerun()
