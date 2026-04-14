@@ -177,6 +177,7 @@ RESULT_HEADERS = [
 # =========================================================
 # 유틸 함수
 # =========================================================
+
 def normalize_text(value) -> str:
     return str(value).strip()
 
@@ -204,10 +205,11 @@ def safe_int(value) -> int:
     except Exception:
         return 0
 
+
 def get_question_type(correct_value: str) -> str:
     """
-    - 3 / 2,4 / 1,3,5  -> 객관식
-    - make a difference -> 서술형
+    - 3 / 2,4 / 1,3,5 -> 객관식
+    - 영어가 들어간 값 -> 서술형
     """
     value = normalize_text(correct_value)
     value_no_space = value.replace(" ", "")
@@ -225,41 +227,49 @@ def normalize_subjective_answer(answer: str) -> str:
     text = normalize_text(answer).lower()
     text = re.sub(r"\s+", " ", text)
     return text
-    
-def get_question_type(correct_value: str) -> str:
-    value = normalize_text(correct_value)
-    value_no_space = value.replace(" ", "")
-
-    if re.fullmatch(r"\d+(,\d+)*", value_no_space):
-        return "multiple_choice"
-    return "subjective"
 
 
-def normalize_objective_answer(answer: str) -> str:
-    return normalize_text(answer).replace(" ", "")
+def split_subjective_answers(correct_value: str) -> List[str]:
+    """
+    예:
+    'a || b || c' -> ['a', 'b', 'c']
+    """
+    return [part.strip() for part in str(correct_value).split("||") if part.strip()]
 
 
-def normalize_subjective_answer(answer: str) -> str:
-    text = normalize_text(answer).lower()
-    text = re.sub(r"\s+", " ", text)
-    return text
-    
 def compare_answer(student_ans: str, correct_ans: str) -> bool:
     q_type = get_question_type(correct_ans)
 
     if q_type == "multiple_choice":
         if "," in normalize_objective_answer(correct_ans):
             correct_norm = ",".join(
-                sorted([x.strip() for x in normalize_objective_answer(correct_ans).split(",") if x.strip()])
+                sorted(
+                    [x.strip() for x in normalize_objective_answer(correct_ans).split(",") if x.strip()]
+                )
             )
             student_norm = ",".join(
-                sorted([x.strip() for x in normalize_objective_answer(student_ans).split(",") if x.strip()])
+                sorted(
+                    [x.strip() for x in normalize_objective_answer(student_ans).split(",") if x.strip()]
+                )
             )
             return student_norm == correct_norm
 
         return normalize_objective_answer(student_ans) == normalize_objective_answer(correct_ans)
 
-    return normalize_subjective_answer(student_ans) == normalize_subjective_answer(correct_ans)
+    correct_parts = [
+        normalize_subjective_answer(x)
+        for x in split_subjective_answers(correct_ans)
+    ]
+    student_parts = [
+        normalize_subjective_answer(x)
+        for x in str(student_ans).split("||")
+        if x.strip()
+    ]
+
+    if len(correct_parts) != len(student_parts):
+        return False
+
+    return all(s == c for s, c in zip(student_parts, correct_parts))
 
 
 def read_records_safe(ws) -> List[Dict]:
