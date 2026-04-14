@@ -658,17 +658,23 @@ if selected_test_name:
 
     with st.form("answer_form", clear_on_submit=False):
         answers_dict: Dict[str, str] = {}
+        question_input_counts: Dict[str, int] = {}
 
         for q_num in target_question_nums:
             correct_value = question_map[q_num]["answer"]
 
-            st.markdown(f"""
-            <div class="q-number">{q_num}번</div>
-            """, unsafe_allow_html=True)
+            st.markdown(
+                f"""
+                <div class="q-number">{q_num}번</div>
+                """,
+                unsafe_allow_html=True,
+            )
 
             q_type = get_question_type(correct_value)
 
             if q_type == "multiple_choice":
+                question_input_counts[q_num] = 1
+
                 if "," in normalize_objective_answer(correct_value):
                     selected = st.pills(
                         label=f"{q_num}번",
@@ -694,6 +700,7 @@ if selected_test_name:
 
             else:
                 parts = split_subjective_answers(correct_value)
+                question_input_counts[q_num] = len(parts)
 
                 if len(parts) == 1:
                     text_answer = st.text_input(
@@ -735,9 +742,21 @@ if selected_test_name:
         st.rerun()
 
     if submitted:
-        empty_questions = [q for q, ans in answers_dict.items() if not ans]
+        empty_questions = []
+
+        for q_num, ans in answers_dict.items():
+            input_count = question_input_counts.get(q_num, 1)
+
+            if input_count == 1:
+                if not str(ans).strip():
+                    empty_questions.append(q_num)
+            else:
+                parts = [x.strip() for x in str(ans).split("||")]
+                if len(parts) != input_count or any(not p for p in parts):
+                    empty_questions.append(q_num)
+
         if empty_questions:
-            st.warning(f"선택하지 않은 문항이 있습니다: {', '.join(empty_questions)}번")
+            st.warning(f"입력하지 않은 문항이 있습니다: {', '.join(empty_questions)}번")
             st.stop()
 
         wrong_nums = []
