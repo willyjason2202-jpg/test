@@ -513,9 +513,28 @@ def load_results():
     return read_records_safe(ws)
 
 
-# =========================================================
+# =========================
+# 데이터 로드 함수
+# =========================
+@st.cache_data(ttl=30)
+def load_students():
+    ws = get_spreadsheet().worksheet("학생정보")
+    return ws.get_all_records()
+
+@st.cache_data(ttl=30)
+def load_tests():
+    ws = get_spreadsheet().worksheet("시험정보")
+    return ws.get_all_records(numericise_ignore=["all"])
+
+@st.cache_data(ttl=30)
+def load_results():
+    ws = get_spreadsheet().worksheet("결과")
+    return ws.get_all_records()
+
+
+# =========================
 # 구글 시트 연결
-# =========================================================
+# =========================
 try:
     spreadsheet = get_spreadsheet()
 
@@ -524,8 +543,10 @@ try:
     result_ws = spreadsheet.worksheet("결과")
 
     students = load_students()
-    load_tests.clear()
+
+    load_tests.clear()   # ✅ 캐시 초기화 (중요)
     tests = load_tests()
+
     results = load_results()
 
 except Exception as e:
