@@ -494,10 +494,10 @@ def get_spreadsheet():
     return client.open_by_url(SPREADSHEET_URL)
 
 
-@st.cache_data(ttl=30)
-def load_students():
-    ws = get_spreadsheet().worksheet("학생정보")
-    return ws.get_all_records()
+@@st.cache_data(ttl=30)
+def load_tests():
+    ws = get_spreadsheet().worksheet("시험정보")
+    return ws.get_all_records(numericise_ignore=["all"])
 
 
 @st.cache_data(ttl=30)
@@ -524,6 +524,7 @@ try:
     result_ws = spreadsheet.worksheet("결과")
 
     students = load_students()
+    load_tests.clear()
     tests = load_tests()
     results = load_results()
 
