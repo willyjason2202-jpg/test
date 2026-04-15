@@ -661,6 +661,7 @@ if selected_test_name:
     with st.form("answer_form", clear_on_submit=False):
         answers_dict: Dict[str, str] = {}
         question_input_counts: Dict[str, int] = {}
+        objective_required_counts: Dict[str, int] = {}
 
         for q_num in target_question_nums:
             correct_value = question_map[q_num]["answer"]
@@ -675,35 +676,27 @@ if selected_test_name:
             q_type = get_question_type(correct_value)
 
             # =========================
-            # 객관식
+            # 객관식: 전부 multiselect로 통일
             # =========================
             if q_type == "multiple_choice":
                 question_input_counts[q_num] = 1
 
-                # 복수정답 문항 -> multiselect
-                if "," in normalize_objective_answer(correct_value):
-                    selected_list = st.multiselect(
-                        label=f"{q_num}번",
-                        options=["1", "2", "3", "4", "5"],
-                        default=[],
-                        key=f"q_{current_stage}_{selected_test_name}_{q_num}_multi",
-                        label_visibility="collapsed",
-                        placeholder="정답을 모두 선택하세요",
-                    )
-                    answers_dict[q_num] = ",".join(sorted(selected_list)) if selected_list else ""
+                correct_options = [
+                    x.strip()
+                    for x in normalize_objective_answer(correct_value).split(",")
+                    if x.strip()
+                ]
+                objective_required_counts[q_num] = len(correct_options)
 
-                # 단일정답 문항 -> pills
-                else:
-                    selected = st.pills(
-                        label=f"{q_num}번",
-                        options=["1", "2", "3", "4", "5"],
-                        selection_mode="single",
-                        default=None,
-                        key=f"q_{current_stage}_{selected_test_name}_{q_num}",
-                        label_visibility="collapsed",
-                        width="stretch",
-                    )
-                    answers_dict[q_num] = selected if selected else ""
+                selected_list = st.multiselect(
+                    label=f"{q_num}번",
+                    options=["1", "2", "3", "4", "5"],
+                    default=[],
+                    key=f"q_{current_stage}_{selected_test_name}_{q_num}_multi",
+                    label_visibility="collapsed",
+                    placeholder="정답을 선택하세요",
+                )
+                answers_dict[q_num] = ",".join(sorted(selected_list)) if selected_list else ""
 
             # =========================
             # 서술형
@@ -712,7 +705,6 @@ if selected_test_name:
                 parts = split_subjective_answers(correct_value)
                 question_input_counts[q_num] = len(parts)
 
-                # 서술형 1문장
                 if len(parts) == 1:
                     text_answer = st.text_input(
                         label=f"{q_num}번",
@@ -721,8 +713,6 @@ if selected_test_name:
                         label_visibility="collapsed",
                     )
                     answers_dict[q_num] = text_answer
-
-                # 서술형 여러 문장
                 else:
                     multi_answers = []
 
@@ -758,21 +748,41 @@ if selected_test_name:
         empty_questions = []
 
         for q_num, ans in answers_dict.items():
-            input_count = question_input_counts.get(q_num, 1)
+            correct_value = question_map[q_num]["answer"]
+            q_type = get_question_type(correct_value)
 
-            # 객관식 / 서술형 1문장
-            if input_count == 1:
-                if not str(ans).strip():
+            if q_type == "multiple_choice":
+                selected_parts = [x.strip() for x in str(ans).split(",") if x.strip()]
+                required_count = objective_required_counts.get(q_num, 1)
+
+                # 아무것도 안 고른 경우
+                if not selected_parts:
                     empty_questions.append(q_num)
+                    continue
 
-            # 서술형 여러 문장
+                # 단일정답 문항인데 여러 개 고른 경우
+                if required_count == 1 and len(selected_parts) != 1:
+                    empty_questions.append(q_num)
+                    continue
+
+                # 복수정답 문항인데 정답 개수와 다르게 고른 경우
+                if required_count > 1 and len(selected_parts) != required_count:
+                    empty_questions.append(q_num)
+                    continue
+
             else:
-                parts = [x.strip() for x in str(ans).split("||")]
-                if len(parts) != input_count or any(not p for p in parts):
-                    empty_questions.append(q_num)
+                input_count = question_input_counts.get(q_num, 1)
+
+                if input_count == 1:
+                    if not str(ans).strip():
+                        empty_questions.append(q_num)
+                else:
+                    parts = [x.strip() for x in str(ans).split("||")]
+                    if len(parts) != input_count or any(not p for p in parts):
+                        empty_questions.append(q_num)
 
         if empty_questions:
-            st.warning(f"입력하지 않은 문항이 있습니다: {', '.join(empty_questions)}번")
+            st.warning(f"입력 형식이 맞지 않거나 비어 있는 문항이 있습니다: {', '.join(empty_questions)}번")
             st.stop()
 
         wrong_nums = []
