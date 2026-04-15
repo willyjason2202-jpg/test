@@ -672,10 +672,13 @@ if selected_test_name:
 
             q_type = get_question_type(correct_value)
 
+            # =========================
+            # 객관식
+            # =========================
             if q_type == "multiple_choice":
                 question_input_counts[q_num] = 1
 
-                # 복수정답 문항
+                # 복수정답 문항 -> multiselect
                 if "," in normalize_objective_answer(correct_value):
                     selected_list = st.multiselect(
                         label=f"{q_num}번",
@@ -687,7 +690,7 @@ if selected_test_name:
                     )
                     answers_dict[q_num] = ",".join(sorted(selected_list)) if selected_list else ""
 
-                # 단일정답 문항
+                # 단일정답 문항 -> pills
                 else:
                     selected = st.pills(
                         label=f"{q_num}번",
@@ -700,6 +703,9 @@ if selected_test_name:
                     )
                     answers_dict[q_num] = selected if selected else ""
 
+            # =========================
+            # 서술형
+            # =========================
             else:
                 parts = split_subjective_answers(correct_value)
                 question_input_counts[q_num] = len(parts)
@@ -752,9 +758,12 @@ if selected_test_name:
         for q_num, ans in answers_dict.items():
             input_count = question_input_counts.get(q_num, 1)
 
+            # 객관식 / 서술형 1문장
             if input_count == 1:
                 if not str(ans).strip():
                     empty_questions.append(q_num)
+
+            # 서술형 여러 문장
             else:
                 parts = [x.strip() for x in str(ans).split("||")]
                 if len(parts) != input_count or any(not p for p in parts):
