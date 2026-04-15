@@ -675,6 +675,7 @@ if selected_test_name:
             if q_type == "multiple_choice":
                 question_input_counts[q_num] = 1
 
+                # 복수정답 문항
                 if "," in normalize_objective_answer(correct_value):
                     selected_list = st.multiselect(
                         label=f"{q_num}번",
@@ -685,6 +686,8 @@ if selected_test_name:
                         placeholder="정답을 모두 선택하세요",
                     )
                     answers_dict[q_num] = ",".join(sorted(selected_list)) if selected_list else ""
+
+                # 단일정답 문항
                 else:
                     selected = st.pills(
                         label=f"{q_num}번",
@@ -701,6 +704,7 @@ if selected_test_name:
                 parts = split_subjective_answers(correct_value)
                 question_input_counts[q_num] = len(parts)
 
+                # 서술형 1문장
                 if len(parts) == 1:
                     text_answer = st.text_input(
                         label=f"{q_num}번",
@@ -709,6 +713,8 @@ if selected_test_name:
                         label_visibility="collapsed",
                     )
                     answers_dict[q_num] = text_answer
+
+                # 서술형 여러 문장
                 else:
                     multi_answers = []
 
