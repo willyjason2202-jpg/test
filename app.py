@@ -676,16 +676,20 @@ if selected_test_name:
                 question_input_counts[q_num] = 1
 
                 if "," in normalize_objective_answer(correct_value):
-                    selected = st.pills(
-                        label=f"{q_num}번",
-                        options=["1", "2", "3", "4", "5"],
-                        selection_mode="multi",
-                        default=[],
-                        key=f"q_{current_stage}_{selected_test_name}_{q_num}",
-                        label_visibility="collapsed",
-                        width="stretch",
-                    )
-                    answers_dict[q_num] = ",".join(sorted(selected)) if selected else ""
+                    options = ["1", "2", "3", "4", "5"]
+                    selected_list = []
+
+                    cols = st.columns(5)
+                    for idx, opt in enumerate(options):
+                        with cols[idx]:
+                            checked = st.checkbox(
+                                opt,
+                                key=f"q_{current_stage}_{selected_test_name}_{q_num}_{opt}"
+                            )
+                            if checked:
+                                selected_list.append(opt)
+
+                    answers_dict[q_num] = ",".join(sorted(selected_list)) if selected_list else ""
                 else:
                     selected = st.pills(
                         label=f"{q_num}번",
