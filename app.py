@@ -134,7 +134,6 @@ div[role="radiogroup"] {
     opacity: 0.95;
 }
 
-
 /* section 제목 */
 .section-title {
     font-size: 20px;
@@ -142,7 +141,6 @@ div[role="radiogroup"] {
     color: #2b2f38;
     margin: 6px 0 12px 0;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -155,6 +153,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.error("VERSION CHECK 777")
+
 
 # =========================================================
 # 상수
@@ -179,7 +178,6 @@ RESULT_HEADERS = [
 # =========================================================
 # 유틸 함수
 # =========================================================
-
 def normalize_text(value) -> str:
     return str(value).strip()
 
@@ -513,25 +511,6 @@ def load_results():
     return read_records_safe(ws)
 
 
-# =========================
-# 데이터 로드 함수
-# =========================
-@st.cache_data(ttl=30)
-def load_students():
-    ws = get_spreadsheet().worksheet("학생정보")
-    return ws.get_all_records()
-
-@st.cache_data(ttl=30)
-def load_tests():
-    ws = get_spreadsheet().worksheet("시험정보")
-    return ws.get_all_records(numericise_ignore=["all"])
-
-@st.cache_data(ttl=30)
-def load_results():
-    ws = get_spreadsheet().worksheet("결과")
-    return ws.get_all_records()
-
-
 # =========================================================
 # 구글 시트 연결
 # =========================================================
@@ -703,12 +682,10 @@ if selected_test_name:
             if q_type == "multiple_choice":
                 question_input_counts[q_num] = 1
 
-                # 정답 셀 안의 숫자 개수로 단일/복수 판단
                 correct_options = re.findall(r"\d+", str(correct_value))
                 required_count = len(correct_options)
                 objective_required_counts[q_num] = required_count
 
-                # 숫자가 2개 이상이면 복수정답
                 if required_count >= 2:
                     selected_list = st.multiselect(
                         label=f"{q_num}번",
@@ -719,8 +696,6 @@ if selected_test_name:
                         placeholder="정답을 모두 선택하세요",
                     )
                     answers_dict[q_num] = ",".join(sorted(selected_list)) if selected_list else ""
-
-                # 숫자가 1개면 단일정답
                 else:
                     selected = st.pills(
                         label=f"{q_num}번",
@@ -830,15 +805,5 @@ if selected_test_name:
         )
 
         load_results.clear()
-
-        st.success(f"{current_stage}차 제출 완료")
-
-        if wrong_nums:
-            st.error(f"틀린 문항: {', '.join(wrong_nums)}")
-            st.info(f"틀린 문항 수: {len(wrong_nums)}")
-        else:
-            st.success("모든 문항 정답입니다.")
-
-        if st.button("시험 목록으로 돌아가기"):
-            st.session_state.selected_test_name = None
-            st.rerun()
+        st.session_state.selected_test_name = None
+        st.rerun()
