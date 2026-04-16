@@ -152,7 +152,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.error("VERSION CHECK 778")
+st.error("VERSION CHECK 779")
 
 
 # =========================================================
@@ -207,6 +207,10 @@ def safe_int(value) -> int:
 
 
 def get_question_type(correct_value: str) -> str:
+    """
+    - 3 / 2,4 / 1,3,5 -> 객관식
+    - 영어가 들어간 값 -> 서술형
+    """
     value = normalize_text(correct_value)
     value_no_space = value.replace(" ", "")
 
@@ -289,7 +293,10 @@ def build_question_map(test_row: Dict) -> Tuple[Dict[str, Dict[str, str]], List[
     question_map: Dict[str, Dict[str, str]] = {}
     ordered_nums: List[str] = []
 
-    question_cols = [key for key in test_row.keys() if normalize_text(key).startswith("문항")]
+    question_cols = [
+        key for key in test_row.keys()
+        if normalize_text(key).startswith("문항")
+    ]
 
     def sort_key(col_name: str) -> int:
         q = normalize_question_number(col_name)
@@ -362,30 +369,12 @@ def find_student(students: List[Dict], student_id: str) -> Optional[Dict]:
 
 
 def find_result_row(results: List[Dict], student_id: str, test_name: str) -> Tuple[Optional[int], Optional[Dict]]:
-    ws = get_spreadsheet().worksheet("결과")
-    values = ws.get_all_values()
-
-    if not values or len(values) < 2:
-        return None, None
-
-    headers = values[0]
-
-    try:
-        idx_student = headers.index("학생ID")
-        idx_test = headers.index("시험명")
-    except ValueError:
-        return None, None
-
-    for row_num, row in enumerate(values[1:], start=2):
-        padded = row + [""] * (len(headers) - len(row))
-        row_dict = dict(zip(headers, padded))
-
+    for idx, row in enumerate(results, start=2):
         if (
-            normalize_student_id(row_dict.get("학생ID", "")) == student_id
-            and normalize_text(row_dict.get("시험명", "")) == test_name
+            normalize_student_id(row.get("학생ID", "")) == student_id
+            and normalize_text(row.get("시험명", "")) == test_name
         ):
-            return row_num, row_dict
-
+            return idx, row
     return None, None
 
 
@@ -512,13 +501,9 @@ def load_results():
 # =========================================================
 try:
     spreadsheet = get_spreadsheet()
-
-    students_ws = spreadsheet.worksheet("학생정보")
-    tests_ws = spreadsheet.worksheet("시험정보")
     result_ws = spreadsheet.worksheet("결과")
 
     students = load_students()
-    load_tests.clear()
     tests = load_tests()
     results = load_results()
 
