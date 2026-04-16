@@ -152,7 +152,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.error("VERSION CHECK 777")
+st.error("VERSION CHECK 778")
 
 
 # =========================================================
@@ -207,10 +207,6 @@ def safe_int(value) -> int:
 
 
 def get_question_type(correct_value: str) -> str:
-    """
-    - 3 / 2,4 / 1,3,5 -> 객관식
-    - 영어가 들어간 값 -> 서술형
-    """
     value = normalize_text(correct_value)
     value_no_space = value.replace(" ", "")
 
@@ -230,10 +226,6 @@ def normalize_subjective_answer(answer: str) -> str:
 
 
 def split_subjective_answers(correct_value: str) -> List[str]:
-    """
-    예:
-    'a || b || c' -> ['a', 'b', 'c']
-    """
     return [part.strip() for part in str(correct_value).split("||") if part.strip()]
 
 
@@ -243,28 +235,17 @@ def compare_answer(student_ans: str, correct_ans: str) -> bool:
     if q_type == "multiple_choice":
         if "," in normalize_objective_answer(correct_ans):
             correct_norm = ",".join(
-                sorted(
-                    [x.strip() for x in normalize_objective_answer(correct_ans).split(",") if x.strip()]
-                )
+                sorted([x.strip() for x in normalize_objective_answer(correct_ans).split(",") if x.strip()])
             )
             student_norm = ",".join(
-                sorted(
-                    [x.strip() for x in normalize_objective_answer(student_ans).split(",") if x.strip()]
-                )
+                sorted([x.strip() for x in normalize_objective_answer(student_ans).split(",") if x.strip()])
             )
             return student_norm == correct_norm
 
         return normalize_objective_answer(student_ans) == normalize_objective_answer(correct_ans)
 
-    correct_parts = [
-        normalize_subjective_answer(x)
-        for x in split_subjective_answers(correct_ans)
-    ]
-    student_parts = [
-        normalize_subjective_answer(x)
-        for x in str(student_ans).split("||")
-        if x.strip()
-    ]
+    correct_parts = [normalize_subjective_answer(x) for x in split_subjective_answers(correct_ans)]
+    student_parts = [normalize_subjective_answer(x) for x in str(student_ans).split("||") if x.strip()]
 
     if len(correct_parts) != len(student_parts):
         return False
@@ -308,10 +289,7 @@ def build_question_map(test_row: Dict) -> Tuple[Dict[str, Dict[str, str]], List[
     question_map: Dict[str, Dict[str, str]] = {}
     ordered_nums: List[str] = []
 
-    question_cols = [
-        key for key in test_row.keys()
-        if normalize_text(key).startswith("문항")
-    ]
+    question_cols = [key for key in test_row.keys() if normalize_text(key).startswith("문항")]
 
     def sort_key(col_name: str) -> int:
         q = normalize_question_number(col_name)
@@ -384,12 +362,30 @@ def find_student(students: List[Dict], student_id: str) -> Optional[Dict]:
 
 
 def find_result_row(results: List[Dict], student_id: str, test_name: str) -> Tuple[Optional[int], Optional[Dict]]:
-    for idx, row in enumerate(results, start=2):
+    ws = get_spreadsheet().worksheet("결과")
+    values = ws.get_all_values()
+
+    if not values or len(values) < 2:
+        return None, None
+
+    headers = values[0]
+
+    try:
+        idx_student = headers.index("학생ID")
+        idx_test = headers.index("시험명")
+    except ValueError:
+        return None, None
+
+    for row_num, row in enumerate(values[1:], start=2):
+        padded = row + [""] * (len(headers) - len(row))
+        row_dict = dict(zip(headers, padded))
+
         if (
-            normalize_student_id(row.get("학생ID", "")) == student_id
-            and normalize_text(row.get("시험명", "")) == test_name
+            normalize_student_id(row_dict.get("학생ID", "")) == student_id
+            and normalize_text(row_dict.get("시험명", "")) == test_name
         ):
-            return idx, row
+            return row_num, row_dict
+
     return None, None
 
 
@@ -522,10 +518,8 @@ try:
     result_ws = spreadsheet.worksheet("결과")
 
     students = load_students()
-
     load_tests.clear()
     tests = load_tests()
-
     results = load_results()
 
 except Exception as e:
@@ -654,6 +648,7 @@ if selected_test_name:
 
     if not target_question_nums:
         st.warning("이번 차수에 다시 풀 문항이 없습니다.")
+        st.caption(f"현재 차수: {current_stage} / 1차오답: {stage_info['stage1_wrong']} / 2차오답: {stage_info['stage2_wrong']}")
         if st.button("목록으로 돌아가기"):
             st.session_state.selected_test_name = None
             st.rerun()
@@ -676,9 +671,6 @@ if selected_test_name:
 
             q_type = get_question_type(correct_value)
 
-            # =========================
-            # 객관식
-            # =========================
             if q_type == "multiple_choice":
                 question_input_counts[q_num] = 1
 
@@ -707,10 +699,6 @@ if selected_test_name:
                         width="stretch",
                     )
                     answers_dict[q_num] = selected if selected else ""
-
-            # =========================
-            # 서술형
-            # =========================
             else:
                 parts = split_subjective_answers(correct_value)
                 question_input_counts[q_num] = len(parts)
